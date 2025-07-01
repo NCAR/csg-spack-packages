@@ -6,8 +6,8 @@ import itertools
 import re
 import sys
 
-from spack_repo.builtin.build_systems.autotools import AutotoolsPackage
 from spack_repo.builtin.packages.mpich.package import MpichEnvironmentModifications
+from spack_repo.builtin.build_systems.autotools import AutotoolsPackage
 
 from spack.package import *
 
@@ -40,6 +40,8 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
     variant("cuda", default=False, description="Enable CUDA extension")
 
     variant("regcache", default=True, description="Enable memory registration cache")
+
+    variant("pbs", default=False, description="Build with support for PBS")
 
     # Accepted values are:
     #   single      - No threads (MPI_THREAD_SINGLE)
@@ -114,6 +116,7 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
     depends_on("cuda", when="+cuda")
     depends_on("libfabric", when="netmod=ofi")
     depends_on("slurm", when="process_managers=slurm")
+    depends_on("openpbs", when="+pbs")
     depends_on("ucx", when="netmod=ucx")
     depends_on("pmix", when="pmi_version=pmix")
 
@@ -199,13 +202,24 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
 
         return opts
 
+    # The configure script thinks that nvhpc can support the necessary Fortran 2008
+    # features, but it cannot. This patch allows us to get Fortran 90 support without
+    # the Fortran 2008 support, which it typically wants to bundle together.
+    def patch(self):
+        if self.spec.satisfies("%nvhpc"):
+            filter_file("f08_works=yes", "f08_works=no", "configure")
+
     def flag_handler(self, name, flags):
+        if flags is None:
+            flags = []
+
         if name == "fflags":
             # https://bugzilla.redhat.com/show_bug.cgi?id=1795817
             if self.spec.satisfies("%gcc@10:"):
-                if flags is None:
-                    flags = []
                 flags.append("-fallow-argument-mismatch")
+        elif name == "cppflags":
+            if self.spec.satisfies("%nvhpc"):
+                flags.append("-noswitcherror")
 
         return (flags, None, None)
 
@@ -226,13 +240,14 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
         args = [
             "--enable-shared",
             "--enable-romio",
+            "--enable-fortran=all",
             "--disable-silent-rules",
             "--disable-new-dtags",
-            "--enable-fortran=all",
             "--enable-threads={0}".format(spec.variants["threads"].value),
             "--with-ch3-rank-bits={0}".format(spec.variants["ch3_rank_bits"].value),
             "--enable-wrapper-rpath={0}".format("no" if "~wrapperrpath" in spec else "yes"),
         ]
+
 
         args.extend(self.enable_or_disable("alloca"))
         if not spec.satisfies("pmi_version=none"):
@@ -272,4 +287,8 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
         args.extend(self.process_manager_options)
         args.extend(self.network_options)
         args.extend(self.file_system_options)
+
+        if spec.satisfies("+pbs"):
+            args.append("--with-pbs={0}".format(spec["openpbs"].prefix))
+
         return args

@@ -31,6 +31,6 @@ class Spherepack(Package):
         return (flags, None, None)
 
     def install(self, spec, prefix):
-        make("MAKE=make", "F90=f90 -O2 -fallow-argument-mismatch", "AR=ar", "libspherepack")
-        make("MAKE=make", "F90=f90 -O2 -fallow-argument-mismatch", "AR=ar", "testspherepack")
+        make("MAKE=make", "F90=f90", "AR=ar", "libspherepack")
+        make("MAKE=make", "F90=f90", "AR=ar", "testspherepack")
         install_tree("lib", prefix.lib)

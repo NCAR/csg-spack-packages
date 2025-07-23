@@ -101,7 +101,7 @@ class Arrow(CMakePackage, CudaPackage):
         "compute", default=False, description="Computational kernel functions and other support"
     )
     variant("dataset", default=False, description="Build the Arrow Dataset integration")
-    variant("filesystem", default=False, description="Build filesystem support")
+    variant("filesystem", default=False, description="Build the Arrow Filesystem Layer")
     variant("gandiva", default=False, description="Build Gandiva support")
     variant(
         "glog",

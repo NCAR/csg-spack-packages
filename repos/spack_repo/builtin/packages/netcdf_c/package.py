@@ -265,6 +265,12 @@ class NetcdfC(CMakePackage, AutotoolsPackage):
     # Byte-range I/O was added in version 4.7.0:
     conflicts("+byterange", when="@:4.6")
 
+    # Byte-range requires DAP starting version 4.9.3:
+    requires("+dap", when="@4.9.3:+byterange")
+
+    # JNA was added in 4.3.2 and removed in 4.9.3:
+    conflicts("+jna", when="@:4.3.1,4.9.3:")
+
     # NCZarr was added in version 4.8.0 as an experimental feature and became a supported one in
     # version 4.8.1:
     conflicts("+nczarr_zip", when="@:4.8.0")
@@ -333,16 +339,19 @@ class AnyBuilder(BaseBuilder):
 
 class CMakeBuilder(AnyBuilder, cmake.CMakeBuilder):
     def cmake_args(self):
+        # In 4.9.3, all CMake options were prefixed.
+        # Ref. https://github.com/Unidata/netcdf-c/pull/2895
+        nc = "NETCDF_" if self.spec.satisfies("@4.9.3:") else ""
         base_cmake_args = [
             self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
-            self.define_from_variant("ENABLE_BYTERANGE", "byterange"),
-            self.define("BUILD_UTILITIES", True),
-            self.define("ENABLE_NETCDF_4", True),
-            self.define_from_variant("ENABLE_DAP", "dap"),
-            self.define_from_variant("ENABLE_HDF4", "hdf4"),
-            self.define("ENABLE_PARALLEL_TESTS", False),
-            self.define_from_variant("ENABLE_FSYNC", "fsync"),
-            self.define("ENABLE_LARGE_FILE_SUPPORT", True),
+            self.define_from_variant(nc + "ENABLE_BYTERANGE", "byterange"),
+            self.define(nc + "BUILD_UTILITIES", True),
+            self.define(nc + "ENABLE_NETCDF_4", True),
+            self.define_from_variant(nc + "ENABLE_DAP", "dap"),
+            self.define_from_variant(nc + "ENABLE_HDF4", "hdf4"),
+            self.define(nc + "ENABLE_PARALLEL_TESTS", False),
+            self.define_from_variant(nc + "ENABLE_FSYNC", "fsync"),
+            self.define(nc + "ENABLE_LARGE_FILE_SUPPORT", True),
             self.define_from_variant("NETCDF_ENABLE_LOGGING", "logging"),
         ]
         if self.pkg.spec.satisfies("@:4.9.2"):
@@ -356,16 +365,19 @@ class CMakeBuilder(AnyBuilder, cmake.CMakeBuilder):
                     self.define_from_variant("NETCDF_ENABLE_DAP", "dap")
             ])
         if "+parallel-netcdf" in self.pkg.spec:
-            base_cmake_args.append(self.define("ENABLE_PNETCDF", True))
+            base_cmake_args.append(self.define(nc + "ENABLE_PNETCDF", True))
         if self.pkg.spec.satisfies("@4.3.1:"):
-            base_cmake_args.append(self.define("ENABLE_DYNAMIC_LOADING", True))
+            base_cmake_args.append(self.define(nc + "ENABLE_DYNAMIC_LOADING", True))
         if "platform=windows" in self.pkg.spec:
             # Enforce the usage of the vendored version of bzip2 on Windows:
             base_cmake_args.append(self.define("Bz2_INCLUDE_DIRS", ""))
+
+        # FIND_SHARED_LIBS has different prefix
+        nc = "NETCDF_" if self.spec.satisfies("@4.9.3:") else "NC_"
         if "+shared" in self.pkg.spec["hdf5"]:
-            base_cmake_args.append(self.define("NC_FIND_SHARED_LIBS", True))
+            base_cmake_args.append(self.define(nc + "FIND_SHARED_LIBS", True))
         else:
-            base_cmake_args.append(self.define("NC_FIND_SHARED_LIBS", False))
+            base_cmake_args.append(self.define(nc + "FIND_SHARED_LIBS", False))
         return base_cmake_args
 
     @run_after("install")
@@ -393,6 +405,18 @@ class AutotoolsBuilder(AnyBuilder, autotools.AutotoolsBuilder):
     def force_autoreconf(self):
         return any(self.spec.satisfies(s) for s in self.pkg._force_autoreconf_when)
 
+    @property
+    def build_targets(self):
+        # Starting version 4.8.0, the library includes C++ source files. None of those files is
+        # compiled in any configuration that we currently support. However, Automake still chooses
+        # the C++ compiler for linking, which leads to overlinking to the standard C++ library.
+        # To avoid that, we run make with an extra argument, which overrides the linker command.
+        # This way, the C++ compiler is never called, and the linking is done with the default
+        # command that runs the C compiler.
+        if self.spec.satisfies("@4.8.0:"):
+            return ["CXXLINK=${LINK}"]
+        return []
+
     @when("@4.6.3:")
     def autoreconf(self, pkg, spec, prefix):
         if not os.path.exists(self.configure_abs_path):
@@ -404,8 +428,12 @@ class AutotoolsBuilder(AnyBuilder, autotools.AutotoolsBuilder):
             "--enable-utilities",
             "--enable-static",
             "--enable-largefile",
-            "--enable-netcdf-4",
         ]
+
+        if self.spec.satisfies("@4.8.0:"):
+            config_args.append("--enable-hdf5")
+        else:
+            config_args.append("--enable-netcdf-4")
 
         # NCZarr was added in version 4.8.0 as an experimental feature and became a supported one
         # in version 4.8.1:
@@ -443,7 +471,7 @@ class AutotoolsBuilder(AnyBuilder, autotools.AutotoolsBuilder):
         elif self.spec.satisfies("@4.7.0:"):
             config_args.append("--disable-byterange")
 
-        if self.spec.satisfies("@4.3.2:"):
+        if self.spec.satisfies("@4.3.2:4.9.2"):
             config_args += self.enable_or_disable("jna")
 
         config_args += self.enable_or_disable("fsync")
@@ -510,6 +538,13 @@ class AutotoolsBuilder(AnyBuilder, autotools.AutotoolsBuilder):
             # Prevent linking to szip to disable the plugin:
             config_args.append("ac_cv_lib_sz_SZ_BufftoBuffCompress=no")
 
+        if self.spec.satisfies("@4.9.3:"):
+            # If the plugin is built (i.e. when +shared), we want to ensure that the configure
+            # scripts checks for -lbz2 delivered by the bzip2 package. If the plugin is not built,
+            # we ensure that the configure script does not pick up system bzip2 (see below), but we
+            # also want to skip the checks for -lbzip2. Therefore, we pass the following option in
+            # both cases:
+            config_args.append("--enable-filter-bz2")
         if self.spec.satisfies("@4.9.0:"):
             if "+shared" in self.spec:
                 lib_search_dirs.extend(self.spec["bzip2"].libs.directories)
@@ -519,13 +554,21 @@ class AutotoolsBuilder(AnyBuilder, autotools.AutotoolsBuilder):
                 config_args.append("ac_cv_lib_bz2_BZ2_bzCompress=no")
 
         if "+zstd" in self.spec:
+            if self.spec.satisfies("@4.9.3:"):
+                config_args.append("--enable-filter-zstd")
             lib_search_dirs.extend(self.spec["zstd"].libs.directories)
+        elif self.spec.satisfies("@4.9.3:"):
+            config_args.append("--disable-filter-zstd")
         elif self.spec.satisfies("@4.9.0:"):
             # Prevent linking to system zstd:
             config_args.append("ac_cv_lib_zstd_ZSTD_compress=no")
 
         if "+blosc" in self.spec:
+            if self.spec.satisfies("@4.9.3:"):
+                config_args.append("--enable-filter-blosc")
             lib_search_dirs.extend(self.spec["c-blosc"].libs.directories)
+        elif self.spec.satisfies("@4.9.3:"):
+            config_args.append("--disable-filter-blosc")
         elif self.spec.satisfies("@4.9.0:"):
             # Prevent linking to system c-blosc:
             config_args.append("ac_cv_lib_blosc_blosc_init=no")

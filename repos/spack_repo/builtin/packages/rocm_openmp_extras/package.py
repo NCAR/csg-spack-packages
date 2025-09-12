@@ -361,10 +361,7 @@ class RocmOpenmpExtras(Package):
         env.set("FC", f"{self.prefix}/bin/flang")
         if self.spec.satisfies("@6.1:"):
             env.prepend_path("LD_LIBRARY_PATH", self.spec["hsa-rocr-dev"].prefix.lib)
-        gfx_list = "gfx700 gfx701 gfx801 gfx803 gfx900 gfx902 gfx906 gfx908"
-
-        if self.spec.version >= Version("4.3.1"):
-            gfx_list = gfx_list + " gfx90a gfx1030 gfx1031"
+        gfx_list = "gfx700 gfx701 gfx801 gfx803 gfx900 gfx902 gfx906 gfx908 gfx90a gfx942 gfx1030 gfx1031"
         env.set("GFXLIST", gfx_list)
 
     def patch(self):
@@ -550,6 +547,7 @@ class RocmOpenmpExtras(Package):
             f"-DDEVICELIBS_ROOT={devlibs_src}",
             "-DNEW_BC_PATH=1",
             f"-DAOMP={llvm_prefix}",
+            f"-DAOMP_VERSION_STRING={self.spec.version}",
         ]
 
         # Shared cmake configuration for openmp, openmp-debug

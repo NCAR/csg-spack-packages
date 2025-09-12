@@ -20,6 +20,8 @@ class Nvtop(CMakePackage, CudaPackage):
 
     license("GPL-3.0-or-later")
 
+    version("3.2.0", sha256="e8d4b2ebfe8352bfaea58ae481da54fa2e74f7ad62d3297807a0d941eec6461e")
+    version("3.1.0", sha256="af0ee288a46757b6fc349ebf071aede82273e229614e6d3badbdf75e054faf88")
     version("3.0.1", sha256="3cb6df2390e29792ed90de54c9332ec25e9d960abddcbb92d8544d658da2b5b3")
     version("3.0.0", sha256="711f1a1ef51ed3f7b1d61c858c4ac1fabb244595cf7b2403f80efcabe81d889e")
     version("2.0.4", sha256="5dc96057597343c66ebe46ae1a5415749ffbfafde99358eea6b533d6fee232e8")

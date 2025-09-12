@@ -40,6 +40,9 @@ class Nvtop(CMakePackage, CudaPackage):
         description="Which GPU vendors to build support for",
     )
 
+    depends_on("c", type="build")
+    depends_on("cxx", type="build")
+    
     depends_on("ncurses")
     depends_on("libdrm", when="support=amd")
 

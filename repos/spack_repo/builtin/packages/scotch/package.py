@@ -21,6 +21,7 @@ class Scotch(CMakePackage, MakefilePackage):
 
     maintainers("AlexanderRichert-NOAA", "climbfuji")
 
+    version("7.0.8", sha256="21f48ac85c7991a5eb5fae9232dd68584556ccc500f85e2ebd6b5b275617e11a")
     version("7.0.7", sha256="02084471d2ca525f8a59b4bb8c607eb5cca452d6a38cf5c89f5f92f7edc1a5b5")
     version("7.0.6", sha256="b44acd0d2f53de4b578fa3a88944cccc45c4d2961cd8cefa9b9a1d5431de8e2b")
     version("7.0.4", sha256="8ef4719d6a3356e9c4ca7fefd7e2ac40deb69779a5c116f44da75d13b3d2c2c3")
@@ -61,6 +62,22 @@ class Scotch(CMakePackage, MakefilePackage):
         default=False,
         when="@7.0.1",
         description="Link error handling library to libscotch/libptscotch",
+    )
+    variant(
+        "determinism",
+        default="FULL",
+        values=("NONE", "FIXED_SEED", "FULL"),
+        multi=False,
+        description="Determinism configuration",
+        when="build_system=makefile",
+    )
+    variant(
+        "determinism",
+        default="FIXED_SEED",
+        values=("NONE", "FIXED_SEED", "FULL"),
+        multi=False,
+        description="Determinism configuration",
+        when="@7.0.7: build_system=cmake",
     )
 
     depends_on("c", type="build")
@@ -147,8 +164,11 @@ class CMakeBuilder(cmake.CMakeBuilder):
             self.define_from_variant("MPI_THREAD_MULTIPLE", "mpi_thread"),
         ]
 
-        if self.pkg.version > Version("7.0.4"):
+        if self.spec.satisfies("@7.0.5:"):
             args.append(self.define("ENABLE_TESTS", self.pkg.run_tests))
+
+        if self.spec.satisfies("@7.0.7:"):
+            args.append(self.define_from_variant("SCOTCH_DETERMINISTIC", "determinism"))
 
         if "+int64" in self.spec:
             args.append("-DINTSIZE=64")
@@ -173,7 +193,14 @@ class MakefileBuilder(makefile.MakefileBuilder):
 
     def edit(self, pkg, spec, prefix):
         makefile_inc = []
-        cflags = ["-O3", "-DCOMMON_RANDOM_FIXED_SEED", "-DSCOTCH_DETERMINISTIC", "-DSCOTCH_RENAME"]
+        cflags = ["-O3", "-DSCOTCH_RENAME"]
+
+        if "determinism=FIXED_SEED" in self.spec:
+            cflags.append("-DCOMMON_RANDOM_FIXED_SEED")
+
+        if "determinism=FULL" in self.spec:
+            cflags.append("-DCOMMON_RANDOM_FIXED_SEED")
+            cflags.append("-DSCOTCH_DETERMINISTIC")
 
         # SCOTCH_Num typedef: size of integers in arguments
         # SCOTCH_Idx typedef: indices for addressing

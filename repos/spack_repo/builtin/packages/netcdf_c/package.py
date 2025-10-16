@@ -57,7 +57,6 @@ class NetcdfC(CMakePackage, AutotoolsPackage):
         #  with the following patch:
         patch("4.8.1-win-hdf5-with-zlib.patch", when="@4.8.1:4.9.2 platform=windows")
 
-    with when("@:4.9.2 build_system=cmake"):
         # TODO: https://github.com/Unidata/netcdf-c/pull/2595 contains some of the changes
         # made in this patch but is not sufficent to replace the patch. There is currently
         # no upstream PR (or set of PRs) covering all changes in this path.
@@ -380,16 +379,6 @@ class CMakeBuilder(AnyBuilder, cmake.CMakeBuilder):
             self.define(nc + "ENABLE_LARGE_FILE_SUPPORT", True),
             self.define_from_variant("NETCDF_ENABLE_LOGGING", "logging"),
         ]
-        if self.pkg.spec.satisfies("@:4.9.2"):
-            base_cmake_args.extend([
-                    self.define("ENABLE_NETCDF_4", True),
-                    self.define_from_variant("ENABLE_DAP", "dap")
-            ])
-        else:
-            base_cmake_args.extend([
-                    self.define("NETCDF_ENABLE_NETCDF_4", True),
-                    self.define_from_variant("NETCDF_ENABLE_DAP", "dap")
-            ])
         if "+parallel-netcdf" in self.pkg.spec:
             base_cmake_args.append(self.define(nc + "ENABLE_PNETCDF", True))
         if self.pkg.spec.satisfies("@4.3.1:"):

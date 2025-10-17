@@ -30,6 +30,10 @@ class Runc(MakefilePackage):
     depends_on("pkgconfig", type="build")
     depends_on("libseccomp")
 
+    def setup_build_environment(self, env: EnvironmentModifications) -> None:
+        # Need to point to go-package go executable to avoid GCC-go being picked up instead
+        env.set("GO", join_path(self.spec["go"].prefix.bin, "go"))
+
     def install(self, spec, prefix):
         make("install", "PREFIX=" + prefix)
         symlink(prefix.sbin, prefix.bin)

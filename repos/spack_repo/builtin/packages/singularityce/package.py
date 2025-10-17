@@ -100,6 +100,9 @@ class SingularityBase(MakefilePackage):
         # Point GOPATH at the top of the staging dir for the build step.
         env.prepend_path("GOPATH", self.gopath)
 
+        # We must ensure go-package exe appears before possible GCC go
+        env.prepend_path("PATH", self.spec["go"].prefix.bin)
+
     # `singularity` has a fixed path where it will look for
     # mksquashfs.  If it lives somewhere else you need to specify the
     # full path in the config file.  This bit uses filter_file to edit

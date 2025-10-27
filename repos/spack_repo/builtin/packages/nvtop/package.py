@@ -47,8 +47,21 @@ class Nvtop(CMakePackage, CudaPackage):
     depends_on("libdrm", when="support=amd")
 
     def cmake_args(self):
-        return [
+        args = [
             self.define("NVIDIA_SUPPORT", self.spec.satisfies("support=nvidia")),
             self.define("AMDGPU_SUPPORT", self.spec.satisfies("support=amd")),
             self.define("INTEL_SUPPORT", self.spec.satisfies("support=intel")),
         ]
+
+        # Without the following set, CMake will look for libdrm when it shouldn't
+        if self.spec.satisfies("@3.1:"):
+            args.extend([
+                "-DMSM_SUPPORT=OFF",
+                "-DPANFROST_SUPPORT=OFF",
+                "-DPANTHOR_SUPPORT=OFF",
+            ])
+
+        if self.spec.satisfies("@3.2:"):
+            args.append("-DV3D_SUPPORT=OFF")
+
+        return args

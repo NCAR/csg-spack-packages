@@ -32,6 +32,10 @@ class Libemos(CMakePackage):
         values=("Debug", "Release", "RelWithDebInfo", "Production"),
     )
 
+    depends_on("c", type="build")
+    depends_on("cxx", type="build")
+    depends_on("fortran", type="build")
+    
     depends_on("eccodes")
     depends_on("fftw precision=float,double")
     depends_on("cmake@2.8.11:", type="build")

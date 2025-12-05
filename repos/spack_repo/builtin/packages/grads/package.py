@@ -91,7 +91,6 @@ class Grads(AutotoolsPackage):
                 or self.spec.satisfies("%gcc@14:")
             ):
                 flags.append("-Wno-error=implicit-function-declaration")
-                #flags.append("-Wno-error=implicit-int")
 
         return flags, None, None
 

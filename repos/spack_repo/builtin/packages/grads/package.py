@@ -83,7 +83,7 @@ class Grads(AutotoolsPackage):
             # Can use newer versions of HDF5, but 1.10 is the last API GrADS supports
             if "hdf5" in spec and spec["hdf5"].satisfies("@1.12:"):
                 flags.append("-DH5_USE_110_API")
-            
+
             if (
                 self.spec.satisfies("%apple-clang@15:")
                 or self.spec.satisfies("%clang@16:")
@@ -101,7 +101,6 @@ class Grads(AutotoolsPackage):
             "--with-zlib=%s" % self.spec["zlib-api"].prefix,
             "--with-jpeg=%s" % self.spec["jpeg"].prefix,
         ]
-
 
         return (flags, None, None)
 

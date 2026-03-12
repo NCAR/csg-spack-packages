@@ -73,21 +73,28 @@ class Legion(CMakePackage, ROCmPackage):
     depends_on("hwloc", when="+hwloc")
     depends_on("libfabric", when="network=gasnet conduit=ofi-slingshot11")
 
+    # Kokkos
+    depends_on("kokkos", when="+kokkos")
+
+    # OpenMP backend
+    depends_on("kokkos+openmp", when="+kokkos+openmp")
+    depends_on("kokkos~openmp", when="+kokkos~openmp")
+
     # cuda-centric
     cuda_arch_list = CudaPackage.cuda_arch_values
     for arch in cuda_arch_list:
+        # UCX transport dependency when using CUDA
         depends_on(f"ucc cuda_arch={arch}", when=f"@25.03.0: network=ucx +cuda cuda_arch={arch}")
+
+        # Kokkos CUDA + compiler-specific wrapper
         depends_on(
-            f"kokkos@3.3.01:+cuda+cuda_lambda+wrapper cuda_arch={arch}",
+            f"kokkos+cuda+cuda_lambda+wrapper cuda_arch={arch}",
             when=f"+kokkos+cuda cuda_arch={arch} %gcc",
         )
         depends_on(
-            f"kokkos@3.3.01:+cuda+cuda_lambda~wrapper cuda_arch={arch}",
+            f"kokkos+cuda+cuda_lambda~wrapper cuda_arch={arch}",
             when=f"+kokkos+cuda cuda_arch={arch} %clang",
         )
-
-    depends_on("kokkos@3.3.01:~cuda", when="+kokkos~cuda")
-    depends_on("kokkos@3.3.01:~cuda+openmp", when="+kokkos+openmp")
 
     # https://github.com/spack/spack/issues/37232#issuecomment-1553376552
     patch("hip-offload-arch.patch", when="@23.03.0 +rocm")
@@ -125,9 +132,9 @@ class Legion(CMakePackage, ROCmPackage):
         depends_on(
             f"ucc amdgpu_target={arch}", when=f"@25.03.0: network=ucx +rocm amdgpu_target={arch}"
         )
-        depends_on(f"kokkos@3.3.01:+rocm amdgpu_target={arch}", when=f"+rocm amdgpu_target={arch}")
+        depends_on(f"kokkos+rocm amdgpu_target={arch}", when=f"+kokkos+rocm amdgpu_target={arch}")
 
-    depends_on("kokkos@3.3.01:+rocm", when="+kokkos+rocm")
+    depends_on("kokkos+rocm", when="+kokkos+rocm")
 
     # https://github.com/StanfordLegion/legion/#dependencies
     depends_on("python@3.8:", when="+python")
@@ -449,7 +456,7 @@ class Legion(CMakePackage, ROCmPackage):
         super().build(spec, prefix)
         if spec.satisfies("+prof"):
             with working_dir(join_path(self.stage.source_path, "tools", "legion_prof_rs")):
-                cargo = which("cargo")
+                cargo = which("cargo", required=True)
                 cargo("install", "--root", "out", "--path", ".", "--all-features", "--locked")
 
     def install(self, spec, prefix):
@@ -484,8 +491,8 @@ class Legion(CMakePackage, ROCmPackage):
             cmake = self.spec["cmake"].command
             cmake(*cmake_args)
 
-            make = which("make")
+            make = which("make", required=True)
             make()
 
-            exe = which("local_function_tasks")
+            exe = which("local_function_tasks", required=True)
             exe()

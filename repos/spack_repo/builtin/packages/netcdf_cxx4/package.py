@@ -30,7 +30,9 @@ class NetcdfCxx4(CMakePackage):
     # then cmake will choose that external netcdf-c.
     # This approach ensures the config.cmake exists, and thus ensures the spack version is
     #  found before the system's
-    depends_on("netcdf-c build_system=cmake")
+    # BJV - but the CMake build of netcdf-c has issues, so let's not worry about this!
+    #depends_on("netcdf-c build_system=cmake")
+    depends_on("netcdf-c")
     depends_on("hdf5")
 
     # if we link against an mpi-aware hdf5 then this needs to also be mpi aware for tests

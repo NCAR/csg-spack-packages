@@ -52,6 +52,10 @@ class Openssl(Package):  # Uses Fake Autotools, should subclass Package
             "3.0.16", sha256="57e03c50feab5d31b152af2b764f10379aecd8ee92f16c985983ce4a99f7ef86"
         )
 
+    # Keeping these versions for NCAR systems
+    version("3.1.4", sha256="840af5366ab9b522bde525826be3ef0fb0af81c6a9ebd84caa600fea1731eee3")
+    version("1.1.1l", sha256="0b7a3e5e59c34827fe0c3a74b7ec8baef302b98fa80088d7f9153aa16fa76bd1")
+    
     # On Cray DVS mounts, we can't make symlinks to /etc/ssl/openssl.cnf,
     # either due to a bug or because DVS is not intended to be POSIX compliant.
     # Therefore, stick to system agnostic certs=mozilla.

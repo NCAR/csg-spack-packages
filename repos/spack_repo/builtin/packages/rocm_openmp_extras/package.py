@@ -614,6 +614,7 @@ class RocmOpenmpExtras(Package):
             f"-DDEVICELIBS_ROOT={devlibs_src}",
             "-DNEW_BC_PATH=1",
             f"-DAOMP={llvm_prefix}",
+            f"-DAOMP_VERSION_STRING={self.spec.version}",
         ]
         if not self.spec.satisfies("%cxx=rocmcc"):
             components["aomp-extras"] += [

@@ -95,6 +95,10 @@ class Podman(Package):
         depends_on("gvproxy@0.8.6", type="run", when="@5.5.1")
         depends_on("vfkit@0.6.1", type="run", when="@5.5.1")
 
+    def setup_build_environment(self, env: EnvironmentModifications) -> None:
+        # Need to point to go-package go executable to avoid GCC-go being picked up instead
+        env.set("GO", join_path(self.spec["go"].prefix.bin, "go"))
+
     @when("@5.5.1:")
     def setup_run_environment(self, env):
         # sets configuration for runtime dependencies

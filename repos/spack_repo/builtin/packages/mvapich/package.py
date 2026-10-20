@@ -43,6 +43,8 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
 
     variant("regcache", default=True, when="@3.0", description="Enable memory registration cache")
 
+    variant("pbs", default=False, description="Build with support for PBS")
+
     # Accepted values are:
     #   single      - No threads (MPI_THREAD_SINGLE)
     #   funneled    - Only the main thread calls MPI (MPI_THREAD_FUNNELED)
@@ -102,6 +104,7 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
     depends_on("libxml2")
     depends_on("libfabric", when="netmod=ofi")
     depends_on("slurm", when="process_managers=slurm")
+    depends_on("openpbs", when="+pbs")
     depends_on("ucx", when="netmod=ucx")
     depends_on("json-c")
     depends_on("libnl", when="netmod=ofi")
@@ -174,13 +177,24 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
 
         return opts
 
+    # The configure script thinks that nvhpc can support the necessary Fortran 2008
+    # features, but it cannot. This patch allows us to get Fortran 90 support without
+    # the Fortran 2008 support, which it typically wants to bundle together.
+    def patch(self):
+        if self.spec.satisfies("%nvhpc"):
+            filter_file("f08_works=yes", "f08_works=no", "configure")
+
     def flag_handler(self, name, flags):
+        if flags is None:
+            flags = []
+
         if name == "fflags":
             # https://bugzilla.redhat.com/show_bug.cgi?id=1795817
             if self.spec.satisfies("%gcc@10:"):
-                if flags is None:
-                    flags = []
                 flags.append("-fallow-argument-mismatch")
+        elif name == "cppflags":
+            if self.spec.satisfies("%nvhpc"):
+                flags.append("-noswitcherror")
 
         return (flags, None, None)
 
@@ -246,4 +260,8 @@ class Mvapich(MpichEnvironmentModifications, AutotoolsPackage):
         args.extend(self.process_manager_options)
         args.extend(self.network_options)
         args.extend(self.file_system_options)
+
+        if self.spec.satisfies("+pbs"):
+            args.append("--with-pbs={0}".format(self.spec["openpbs"].prefix))
+
         return args

@@ -1,0 +1,15 @@
+--- a/cmake/LibFind.cmake
++++ b/cmake/LibFind.cmake
+@@ -304,8 +304,10 @@
+         # handle the QUIETLY and REQUIRED arguments and
+         # set NetCDF_C_FOUND to TRUE if all listed variables are TRUE
+ 
+-        # Use the main package name for find_package_handle_standard_args to avoid CMake warnings
+-        find_package_handle_standard_args (${PKG} DEFAULT_MSG
++        # NCAR: use the component name (as in PIO <= 2.6.8) so ${PKGCOMP}_FOUND is set;
++        # with ${PKG} only ${PKG}_FOUND is set and e.g. MPISERIAL_C_FOUND stays undefined,
++        # which drops mpi-serial from the pioc link and its -D_MPISERIAL/-DMPI_SERIAL flags.
++        find_package_handle_standard_args (${PKGCOMP} DEFAULT_MSG
+                            ${PKGCOMP}_LIBRARY
+                            ${PKGCOMP}_INCLUDE_DIR)
+         mark_as_advanced (${PKGCOMP}_INCLUDE_DIR ${PKGCOMP}_LIBRARY)

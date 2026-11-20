@@ -61,6 +61,11 @@ class Parallelio(CMakePackage):
     # libraries installed via apt in usr/lib/<arch>.
     patch("cmake-libfind-arch.patch", when="@2.6.0:2.6.9")
 
+    # NCAR: since 2.6.9, LibFind.cmake calls find_package_handle_standard_args(${PKG}), which
+    # leaves MPISERIAL_C_FOUND unset. Serial libpioc is then built without libmpi-serial.a
+    # (undefined MPI_* symbols) and without -D_MPISERIAL. Revert to the 2.6.8 call.
+    patch("libfind-pkgcomp-found.patch", when="@2.6.10")
+
     depends_on("c", type="build")  # generated
     depends_on("cxx", type="build")  # generated
     depends_on("fortran", type="build")  # generated

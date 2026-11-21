@@ -99,6 +99,29 @@ class OsuMicroBenchmarks(AutotoolsPackage, CudaPackage, ROCmPackage):
             config_args.append("LDFLAGS=-lrt")
         return config_args
 
+    # NCAR: with nvhpc 26.9 as nvcc's host compiler, `nvcc -cuda` output contains nvc++'s
+    # _cplus_nvcc.h va_list block twice, so the .cu.cpp -> .cpp.o chain fails ("invalid
+    # redeclaration of type name __pgi_va_list_helper"). Add a direct .cu.o rule (nvcc -c),
+    # defined before .cu.cpp so make uses it for kernel.o instead of the chain.
+    @run_after("configure", when="+cuda %nvhpc@26.9:")
+    def nvhpc_direct_cu_compile(self):
+        cu_o_rule = (
+            ".cu.o:\n"
+            "\t$(NVCC) $(patsubst -cuda,-c,$(NVCFLAGS)) $(INCLUDES) $(CPPFLAGS) -o $@ $<\n\n"
+        )
+        patched = 0
+        with working_dir(self.stage.source_path):
+            for makefile in find(".", "Makefile"):
+                with open(makefile) as f:
+                    text = f.read()
+                if "\n.cu.cpp:\n" in text and "\n.cu.o:\n" not in text:
+                    text = text.replace("\n.cu.cpp:\n", "\n" + cu_o_rule + ".cu.cpp:\n", 1)
+                    with open(makefile, "w") as f:
+                        f.write(text)
+                    patched += 1
+        if not patched:
+            raise InstallError("nvhpc_direct_cu_compile: no Makefile with a .cu.cpp rule")
+
     def setup_build_environment(self, env: EnvironmentModifications) -> None:
         if "+cuda" in self.spec:
             env.prepend_path("LIBRARY_PATH", self.spec["cuda"].prefix.lib64.stubs)

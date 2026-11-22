@@ -68,6 +68,10 @@ class Ucc(AutotoolsPackage, CudaPackage, ROCmPackage):
         if "+cuda" in self.spec:
             if self.spec.variants["cuda_arch"].values != ("none",):
                 gencode_args = self.cuda_flags(self.spec.variants["cuda_arch"].values)
+                # NCAR: the 1.9.0 NVLS filter (config/m4/cuda.m4) only recognizes -gencode;
+                # with --generate-code it passes a bare arch=compute_90,... to nvcc, which
+                # fails ("A single input file is required"). Use the one-token -gencode= form.
+                gencode_args = [g.replace("--generate-code ", "-gencode=") for g in gencode_args]
                 args.append(f"--with-nvcc-gencode={' '.join(gencode_args)}")
 
         if self.spec.satisfies("+rocm"):

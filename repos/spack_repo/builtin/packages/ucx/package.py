@@ -262,11 +262,6 @@ class Ucx(AutotoolsPackage, CudaPackage):
 
     # See https://github.com/openucx/ucx/pull/8629, wrong int type
     patch("commit-2523555.patch", when="@1.13.1")
-    # NCAR: 1.22.0 logs a failed cuDeviceGetCount at ERROR in
-    # uct_cuda_ctx_primary_push_first_active(); on nodes with libcuda but no GPU (Casper htc,
-    # login) every MPI process printed it via the IB GDA check. Log at DIAG like the other
-    # cuDeviceGetCount calls (cf. upstream PR #10528). Drop when upstream fixes it.
-    patch("ucx-1.22-cudevicegetcount-diag.patch", when="@1.22.0")
 
     def patch(self):
         if self.spec.satisfies("+rocm"):

@@ -11,12 +11,13 @@ from spack.package import *
 _is_macos = sys.platform == "darwin"
 
 
-def write_containers_conf(pkg_obj, dep_names):
+def write_containers_conf(pkg_obj, dep_names, conmon=False):
     """
     writes podman runtime dependency paths to containers.conf
     args:
         pkg_obj: the self object during the install() phase
         dep_names (list): strings of the dependencies to add to the config
+        conmon (bool): also set conmon_path to the conmon dependency
     """
 
     # podman requires its runtime deps to be in a configured directory
@@ -29,6 +30,10 @@ def write_containers_conf(pkg_obj, dep_names):
     [engine]
     helper_binaries_dir=[{helper_dirs}]
     """
+    # NCAR: patch()'s ConmonPath filter matches nothing in podman 5's default.go, so
+    # without this podman 5 finds no conmon on nodes that lack a system one.
+    if conmon:
+        config += f'conmon_path=["{pkg_obj.spec["conmon"].prefix.bin.conmon}"]\n'
 
     with open(join_path(pkg_obj.prefix, "containers.conf"), "w") as f:
         f.write(config)
@@ -170,4 +175,4 @@ class Podman(Package):
 
         # passt becomes a dep on newer versions of podman
         if spec.satisfies("@5.5.1:"):
-            write_containers_conf(self, ["passt"])
+            write_containers_conf(self, ["passt"], conmon=True)

@@ -225,6 +225,12 @@ class Libfabric(AutotoolsPackage, CudaPackage, ROCmPackage):
     def setup_build_environment(self, env: EnvironmentModifications) -> None:
         if self.run_tests:
             env.prepend_path("PATH", self.prefix.bin)
+        # NCAR: configure's CUDA check links -lnvidia-ml. Driver images that ship only
+        # libnvidia-ml.so.1 (no unversioned .so) fail it, so point the linker at the CUDA stubs.
+        # LIBRARY_PATH is link-time only (no rpath); at runtime libnvidia-ml.so.1 comes from
+        # the driver.
+        if self.spec.satisfies("+cuda ~cuda_dlopen"):
+            env.append_path("LIBRARY_PATH", join_path(self.spec["cuda"].prefix, "lib64", "stubs"))
 
     # To enable this package add it to the LD_LIBRARY_PATH
     def setup_run_environment(self, env: EnvironmentModifications) -> None:
